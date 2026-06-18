@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
-      content="Juego móvil en primera persona para pilotar un avión sobre un mapa satélite con terreno 3D y controles táctiles."
+      content="Juego móvil en primera persona para pilotar un avión sobre un mapa satélite con terreno 3D, modo turismo y competición."
     />
     <meta name="theme-color" content="#07111f" />
 
@@ -15,6 +15,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
     <link rel="stylesheet" href="./src/css/runtime.css" />
+    <link rel="stylesheet" href="./src/css/modes.css" />
   </head>
 
   <body class="min-h-screen overflow-hidden bg-slate-950 text-white antialiased">
@@ -34,10 +35,14 @@
                 <h1 class="text-xl font-black leading-none tracking-tight sm:text-3xl">
                   Vuelo satélite 3D
                 </h1>
+                <p id="mode-readout" class="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-sky-100/80">
+                  Modo turismo
+                </p>
               </div>
-              <div class="grid min-w-28 gap-1 rounded-2xl border border-white/15 bg-slate-950/50 px-3 py-2 text-right text-xs shadow-2xl backdrop-blur-md">
+              <div class="grid min-w-32 gap-1 rounded-2xl border border-white/15 bg-slate-950/50 px-3 py-2 text-right text-xs shadow-2xl backdrop-blur-md">
                 <span>Distancia <strong id="score" class="text-white">0</strong> m</span>
                 <span>Mejor <strong id="best-score" class="text-white">0</strong> m</span>
+                <span id="competition-hud" class="hidden">Aros <strong id="competition-score" class="text-white">0</strong> · <strong id="competition-time" class="text-white">60</strong>s</span>
               </div>
             </header>
           </div>
@@ -87,10 +92,28 @@
           >
             <div class="game-panel max-w-md rounded-[2rem] border border-white/15 bg-white/10 p-5 text-center shadow-2xl backdrop-blur-xl">
               <p class="text-xs font-bold uppercase tracking-[0.28em] text-sky-200">Primera persona</p>
-              <h2 id="overlay-title" class="mt-3 text-3xl font-black">Elige salida y despega</h2>
+              <h2 id="overlay-title" class="mt-3 text-3xl font-black">Elige modo, salida y despega</h2>
               <p id="overlay-message" class="mt-3 text-sm leading-relaxed text-slate-200">
-                Usa el mando para girar y cambiar altitud: tira para subir, empuja para bajar. La palanca controla una velocidad extrema. Antes de despegar, selecciona una localización con relieve 3D.
+                Turismo es vuelo libre. En Competición tienes 60 segundos para atravesar los aros que van apareciendo. Elige nivel, salida y despega.
               </p>
+
+              <div class="mode-picker" aria-label="Selector de modo de juego">
+                <label class="location-label" for="game-mode-select">Modo de juego</label>
+                <select id="game-mode-select" class="location-select">
+                  <option value="tourism">Turismo · vuelo libre</option>
+                  <option value="competition">Competición · 60 segundos</option>
+                </select>
+
+                <label class="location-label" for="competition-level-select">Nivel de competición</label>
+                <select id="competition-level-select" class="location-select">
+                  <option value="easy">Nivel 1 · entrenamiento</option>
+                  <option value="medium">Nivel 2 · piloto</option>
+                  <option value="hard">Nivel 3 · as</option>
+                </select>
+                <p id="mode-status" class="location-status" aria-live="polite">
+                  Modo turismo: vuela sin límite y explora el relieve 3D.
+                </p>
+              </div>
 
               <div class="location-picker" aria-label="Selector de localización de salida">
                 <label class="location-label" for="location-select">Localizaciones rápidas</label>
