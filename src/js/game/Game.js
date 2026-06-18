@@ -72,6 +72,7 @@ export class Game {
   reset() {
     this.position = [...this.startLocation.center];
     this.heading = this.startLocation.heading ?? FLIGHT_CONFIG.startHeading;
+    this.flightPitch = 0;
     this.speed = FLIGHT_CONFIG.startSpeed;
     this.distance = 0;
     this.#syncCamera(0);
@@ -91,6 +92,7 @@ export class Game {
     this.startLocation = location;
     this.position = [...location.center];
     this.heading = location.heading ?? FLIGHT_CONFIG.startHeading;
+    this.flightPitch = 0;
     this.#syncCamera(450);
   }
 
@@ -178,16 +180,22 @@ export class Game {
     this.#lastTime = time;
 
     this.#updateFlight(deltaTime);
-    this.#syncCamera(260);
+    this.#syncCamera(90);
     this.#paintHud();
 
     this.#animationFrame = requestAnimationFrame((nextTime) => this.#tick(nextTime));
   }
 
   #updateFlight(deltaTime) {
+    const pitchInput = this.controls.pitch;
     const throttleForce = this.controls.throttle * FLIGHT_CONFIG.acceleration;
+    const pitchSpeedEffect =
+      Math.max(0, -pitchInput) * FLIGHT_CONFIG.diveBoost -
+      Math.max(0, pitchInput) * FLIGHT_CONFIG.climbBrake;
+
+    this.flightPitch = clamp(pitchInput * FLIGHT_CONFIG.pitchInfluence, -FLIGHT_CONFIG.pitchInfluence, FLIGHT_CONFIG.pitchInfluence);
     this.speed = clamp(
-      this.speed + (throttleForce - FLIGHT_CONFIG.drag) * deltaTime,
+      this.speed + (throttleForce + pitchSpeedEffect - FLIGHT_CONFIG.drag) * deltaTime,
       FLIGHT_CONFIG.minSpeed,
       FLIGHT_CONFIG.maxSpeed,
     );
@@ -200,11 +208,17 @@ export class Game {
   #syncCamera(duration) {
     if (!this.map) return;
 
-    const center = moveLngLat(this.position, this.heading, MAP_CONFIG.lookAheadMeters);
+    const pitch = clamp(
+      MAP_CONFIG.pitch + this.flightPitch,
+      MAP_CONFIG.minFlightPitch,
+      MAP_CONFIG.maxFlightPitch,
+    );
+    const lookAhead = MAP_CONFIG.lookAheadMeters + this.speed * 1.65;
+    const center = moveLngLat(this.position, this.heading, lookAhead);
     const camera = {
       center,
       bearing: this.heading,
-      pitch: MAP_CONFIG.pitch,
+      pitch,
       zoom: MAP_CONFIG.initialZoom,
       duration,
       essential: true,
