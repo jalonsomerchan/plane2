@@ -1,7 +1,7 @@
 {
-  "name": "game-template",
+  "name": "plane2",
   "version": "1.0.0",
-  "description": "Template moderno para juegos HTML5 con JavaScript puro, Canvas, Vite y Tailwind CSS.",
+  "description": "Juego móvil de avión en primera persona sobre mapa satélite 3D con Canvas, Vite y Tailwind CSS.",
   "type": "module",
   "private": false,
   "scripts": {
@@ -14,17 +14,18 @@
   },
   "keywords": [
     "html5",
-    "canvas",
+    "maplibre",
+    "flight",
     "game",
     "javascript",
     "tailwindcss",
-    "vite",
-    "template"
+    "vite"
   ],
   "author": "Jorge Alonso",
   "license": "MIT",
   "dependencies": {
     "@tailwindcss/vite": "^4.1.0",
+    "maplibre-gl": "^4.7.1",
     "tailwindcss": "^4.1.0"
   },
   "devDependencies": {
