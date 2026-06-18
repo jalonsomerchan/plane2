@@ -27,12 +27,110 @@ body {
 
 button,
 canvas,
+input,
+select,
 [role='slider'] {
   -webkit-tap-highlight-color: transparent;
 }
 
 .maplibregl-control-container {
   display: none;
+}
+
+.game-overlay[hidden],
+.game-overlay.is-hidden {
+  display: none !important;
+  backdrop-filter: none;
+}
+
+.game-panel {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+.location-picker {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.location-label {
+  color: rgba(226, 232, 240, 0.8);
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+}
+
+.location-select,
+.location-search-input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 1rem;
+  background: rgba(2, 6, 23, 0.66);
+  color: #f8fafc;
+  font: inherit;
+  outline: none;
+  padding: 0.85rem 0.95rem;
+}
+
+.location-select:focus,
+.location-search-input:focus,
+.location-search-button:focus,
+.location-result:focus {
+  border-color: rgba(186, 230, 253, 0.9);
+  box-shadow: 0 0 0 0.2rem rgba(125, 211, 252, 0.24);
+}
+
+.location-search-row {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: 1fr auto;
+}
+
+.location-search-button,
+.location-result {
+  border: 1px solid rgba(186, 230, 253, 0.2);
+  border-radius: 1rem;
+  background: rgba(125, 211, 252, 0.14);
+  color: #e0f2fe;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  outline: none;
+  padding: 0.85rem 0.95rem;
+}
+
+.location-status {
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.location-results {
+  display: grid;
+  gap: 0.45rem;
+  max-height: 9.5rem;
+  overflow-y: auto;
+}
+
+.location-result {
+  display: block;
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+}
+
+.location-result span {
+  display: -webkit-box;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .mobile-control {
@@ -149,6 +247,12 @@ canvas,
 
 .throttle-track.is-active .throttle-handle {
   border-color: #ffffff;
+}
+
+@media (max-width: 420px) {
+  .location-search-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 768px) {
