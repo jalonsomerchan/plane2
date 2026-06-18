@@ -1,9 +1,12 @@
 import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm';
-import { MAP_CONFIG, FLIGHT_CONFIG } from '../config/mapConfig.js';
+import { FLIGHT_CONFIG, MAP_CONFIG, PRESET_LOCATIONS } from '../config/mapConfig.js';
 import { MobileFlightControls } from '../controls/MobileFlightControls.js';
-import { moveLngLat } from './geo.js';
 import { clamp } from '../utils/math.js';
 import { readNumber, writeNumber } from '../utils/storage.js';
+import { moveLngLat } from './geo.js';
+import { LocationPicker } from './LocationPicker.js';
+
+const OVERLAY_HIDDEN_CLASS = 'is-hidden';
 
 export class Game {
   #animationFrame = null;
@@ -20,15 +23,29 @@ export class Game {
     steeringElement,
     throttleElement,
     speedElement,
+    locationSelect,
+    locationSearchForm,
+    locationSearchInput,
+    locationResults,
+    locationStatus,
   }) {
     this.scoreElement = scoreElement;
     this.bestScoreElement = bestScoreElement;
     this.overlayElement = overlayElement;
     this.playButton = playButton;
     this.speedElement = speedElement;
+    this.startLocation = PRESET_LOCATIONS[0];
     this.controls = new MobileFlightControls({ steeringElement, throttleElement });
     this.bestScore = readNumber(FLIGHT_CONFIG.storageBestScoreKey);
     this.map = this.#createMap(mapElement);
+    this.locationPicker = new LocationPicker({
+      selectElement: locationSelect,
+      formElement: locationSearchForm,
+      inputElement: locationSearchInput,
+      resultsElement: locationResults,
+      statusElement: locationStatus,
+      onSelect: (location) => this.#setStartLocation(location),
+    });
 
     this.reset();
     this.#bindEvents();
@@ -38,7 +55,7 @@ export class Game {
 
   start() {
     this.reset();
-    this.overlayElement.hidden = true;
+    this.#hideOverlay();
     this.#isRunning = true;
     this.#lastTime = performance.now();
     this.#animationFrame = requestAnimationFrame((time) => this.#tick(time));
@@ -53,12 +70,28 @@ export class Game {
   }
 
   reset() {
-    this.position = [...MAP_CONFIG.center];
-    this.heading = FLIGHT_CONFIG.startHeading;
+    this.position = [...this.startLocation.center];
+    this.heading = this.startLocation.heading ?? FLIGHT_CONFIG.startHeading;
     this.speed = FLIGHT_CONFIG.startSpeed;
     this.distance = 0;
     this.#syncCamera(0);
     this.#setScore(0);
+    this.#paintHud();
+  }
+
+  #hideOverlay() {
+    this.overlayElement.classList.add(OVERLAY_HIDDEN_CLASS);
+    this.overlayElement.setAttribute('hidden', '');
+    this.overlayElement.setAttribute('aria-hidden', 'true');
+  }
+
+  #setStartLocation(location) {
+    if (this.#isRunning) return;
+
+    this.startLocation = location;
+    this.position = [...location.center];
+    this.heading = location.heading ?? FLIGHT_CONFIG.startHeading;
+    this.#syncCamera(450);
   }
 
   #createMap(container) {
@@ -84,12 +117,12 @@ export class Game {
           },
         ],
       },
-      center: MAP_CONFIG.center,
+      center: this.startLocation.center,
       zoom: MAP_CONFIG.initialZoom,
       minZoom: MAP_CONFIG.minZoom,
       maxZoom: MAP_CONFIG.maxZoom,
       pitch: MAP_CONFIG.pitch,
-      bearing: FLIGHT_CONFIG.startHeading,
+      bearing: this.startLocation.heading,
       maxPitch: 85,
       antialias: true,
       attributionControl: false,
