@@ -1,8 +1,9 @@
 :root {
   color-scheme: dark;
   --game-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --steering-angle: 0deg;
-  --throttle-level: 42%;
+  --stick-x: 0%;
+  --stick-y: 0%;
+  --throttle-level: 68%;
 }
 
 * {
@@ -149,63 +150,74 @@ select,
   text-transform: uppercase;
 }
 
-.steering-wheel {
+.flight-stick {
   position: relative;
-  width: clamp(6.6rem, 28vw, 9rem);
+  width: clamp(7.4rem, 31vw, 10rem);
   aspect-ratio: 1;
-  border: 0.72rem solid rgba(186, 230, 253, 0.82);
-  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.26);
+  border-radius: 2.1rem;
   background:
-    radial-gradient(circle, rgba(15, 23, 42, 0.78) 0 28%, transparent 29%),
-    linear-gradient(145deg, rgba(14, 165, 233, 0.34), rgba(15, 23, 42, 0.62));
+    radial-gradient(circle at 50% 50%, rgba(125, 211, 252, 0.2), transparent 36%),
+    linear-gradient(145deg, rgba(8, 47, 73, 0.8), rgba(2, 6, 23, 0.78));
   box-shadow:
-    0 1.2rem 3rem rgba(2, 6, 23, 0.65),
-    inset 0 0 1.4rem rgba(255, 255, 255, 0.14);
+    0 1.2rem 3rem rgba(2, 6, 23, 0.68),
+    inset 0 0 2rem rgba(255, 255, 255, 0.1);
   cursor: grab;
   touch-action: none;
-  transform: rotate(var(--steering-angle));
-  transition:
-    transform 120ms ease,
-    border-color 160ms ease;
 }
 
-.steering-wheel.is-active {
-  border-color: #e0f2fe;
+.flight-stick.is-active {
+  border-color: rgba(224, 242, 254, 0.86);
   cursor: grabbing;
 }
 
-.steering-spoke,
-.steering-hub {
+.stick-gate {
+  position: absolute;
+  inset: 15%;
+  border: 0.2rem solid rgba(224, 242, 254, 0.34);
+  border-radius: 999px;
+  box-shadow: inset 0 0 1.4rem rgba(125, 211, 252, 0.12);
+}
+
+.stick-axis {
   position: absolute;
   left: 50%;
   top: 50%;
-  background: rgba(224, 242, 254, 0.82);
-  transform-origin: left center;
-}
-
-.steering-spoke {
-  width: 36%;
-  height: 0.35rem;
-  border-radius: 999px;
-}
-
-.steering-spoke-a {
-  transform: rotate(25deg);
-}
-
-.steering-spoke-b {
-  transform: rotate(155deg);
-}
-
-.steering-spoke-c {
-  transform: rotate(270deg);
-}
-
-.steering-hub {
-  width: 1.55rem;
-  height: 1.55rem;
+  background: rgba(224, 242, 254, 0.26);
   border-radius: 999px;
   transform: translate(-50%, -50%);
+}
+
+.stick-axis-x {
+  width: 72%;
+  height: 0.12rem;
+}
+
+.stick-axis-y {
+  width: 0.12rem;
+  height: 72%;
+}
+
+.stick-grip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3.15rem;
+  height: 3.15rem;
+  border: 0.35rem solid rgba(224, 242, 254, 0.94);
+  border-radius: 1.1rem 1.1rem 1.6rem 1.6rem;
+  background:
+    linear-gradient(180deg, rgba(186, 230, 253, 0.2), transparent 42%),
+    rgba(15, 23, 42, 0.95);
+  box-shadow:
+    0 0.9rem 1.9rem rgba(2, 6, 23, 0.62),
+    inset 0 0.55rem 0.9rem rgba(255, 255, 255, 0.14);
+  transform: translate(calc(-50% + var(--stick-x)), calc(-50% + var(--stick-y))) rotate(calc(var(--stick-x) * 0.12));
+  transition: transform 90ms ease;
+}
+
+.flight-stick.is-active .stick-grip {
+  border-color: #ffffff;
 }
 
 .throttle-track {
