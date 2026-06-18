@@ -7,6 +7,12 @@ import { moveLngLat } from './geo.js';
 import { LocationPicker } from './LocationPicker.js';
 
 const OVERLAY_HIDDEN_CLASS = 'is-hidden';
+const START_TITLE = 'Elige salida y despega';
+const START_MESSAGE =
+  'Usa el mando para girar y cambiar altitud: tira para subir, empuja para bajar. La palanca controla una velocidad extrema. Antes de despegar, selecciona una localización con relieve 3D.';
+const CRASH_TITLE = 'Has tocado suelo';
+const CRASH_MESSAGE =
+  'Impacto contra el terreno. Sube antes con el mando o mete más potencia para volver a despegar. Puedes cambiar la salida antes de reintentarlo.';
 
 export class Game {
   #animationFrame = null;
@@ -32,6 +38,8 @@ export class Game {
     this.scoreElement = scoreElement;
     this.bestScoreElement = bestScoreElement;
     this.overlayElement = overlayElement;
+    this.overlayTitle = overlayElement.querySelector('#overlay-title');
+    this.overlayMessage = overlayElement.querySelector('#overlay-message');
     this.playButton = playButton;
     this.speedElement = speedElement;
     this.startLocation = PRESET_LOCATIONS[0];
@@ -66,6 +74,7 @@ export class Game {
 
     if (this.#animationFrame) {
       cancelAnimationFrame(this.#animationFrame);
+      this.#animationFrame = null;
     }
   }
 
@@ -75,6 +84,7 @@ export class Game {
     this.altitude = FLIGHT_CONFIG.startAltitude;
     this.verticalSpeed = 0;
     this.speed = FLIGHT_CONFIG.startSpeed;
+    this.steeringInput = 0;
     this.distance = 0;
     this.#syncCamera(0);
     this.#setScore(0);
@@ -87,6 +97,15 @@ export class Game {
     this.overlayElement.setAttribute('aria-hidden', 'true');
   }
 
+  #showOverlay({ title = START_TITLE, message = START_MESSAGE, buttonText = 'Despegar' } = {}) {
+    this.overlayTitle.textContent = title;
+    this.overlayMessage.textContent = message;
+    this.playButton.textContent = buttonText;
+    this.overlayElement.classList.remove(OVERLAY_HIDDEN_CLASS);
+    this.overlayElement.removeAttribute('hidden');
+    this.overlayElement.setAttribute('aria-hidden', 'false');
+  }
+
   #setStartLocation(location) {
     if (this.#isRunning) return;
 
@@ -95,6 +114,8 @@ export class Game {
     this.heading = location.heading ?? FLIGHT_CONFIG.startHeading;
     this.altitude = FLIGHT_CONFIG.startAltitude;
     this.verticalSpeed = 0;
+    this.speed = FLIGHT_CONFIG.startSpeed;
+    this.steeringInput = 0;
     this.#syncCamera(450);
   }
 
@@ -182,6 +203,8 @@ export class Game {
     this.#lastTime = time;
 
     this.#updateFlight(deltaTime);
+    if (!this.#isRunning) return;
+
     this.#syncCamera(90);
     this.#paintHud();
 
@@ -194,27 +217,50 @@ export class Game {
       altitudeInput >= 0
         ? altitudeInput * FLIGHT_CONFIG.climbRate
         : altitudeInput * FLIGHT_CONFIG.sinkRate;
-    const smoothing = Math.min(1, FLIGHT_CONFIG.altitudeSmoothing * deltaTime);
-    const throttleForce = this.controls.throttle * FLIGHT_CONFIG.acceleration;
+    const altitudeSmoothing = Math.min(1, FLIGHT_CONFIG.altitudeSmoothing * deltaTime);
+    const rawSteering = this.controls.steering;
+    const targetSteering = Math.sign(rawSteering) * Math.abs(rawSteering) ** FLIGHT_CONFIG.steeringCurve;
+    const steeringSmoothing = Math.min(1, FLIGHT_CONFIG.steeringSmoothing * deltaTime);
+    const throttle = this.controls.throttle;
+    const throttleCurve = throttle ** FLIGHT_CONFIG.throttleCurve;
     const altitudeSpeedEffect =
       Math.max(0, -altitudeInput) * FLIGHT_CONFIG.diveBoost -
       Math.max(0, altitudeInput) * FLIGHT_CONFIG.climbBrake;
+    const targetSpeed = clamp(
+      FLIGHT_CONFIG.minSpeed + throttleCurve * (FLIGHT_CONFIG.maxSpeed - FLIGHT_CONFIG.minSpeed) + altitudeSpeedEffect,
+      FLIGHT_CONFIG.minSpeed,
+      FLIGHT_CONFIG.maxSpeed,
+    );
+    const speedResponse =
+      targetSpeed > this.speed ? FLIGHT_CONFIG.accelerationResponse : FLIGHT_CONFIG.decelerationResponse;
 
-    this.verticalSpeed += (targetVerticalSpeed - this.verticalSpeed) * smoothing;
+    this.verticalSpeed += (targetVerticalSpeed - this.verticalSpeed) * altitudeSmoothing;
     this.altitude = clamp(
       this.altitude + this.verticalSpeed * deltaTime,
       FLIGHT_CONFIG.minAltitude,
       FLIGHT_CONFIG.maxAltitude,
     );
-    this.speed = clamp(
-      this.speed + (throttleForce + altitudeSpeedEffect - FLIGHT_CONFIG.drag) * deltaTime,
-      FLIGHT_CONFIG.minSpeed,
-      FLIGHT_CONFIG.maxSpeed,
-    );
-    this.heading += this.controls.steering * FLIGHT_CONFIG.turnRate * deltaTime;
+    this.speed += (targetSpeed - this.speed) * Math.min(1, speedResponse * deltaTime);
+    this.steeringInput += (targetSteering - this.steeringInput) * steeringSmoothing;
+    this.heading += this.steeringInput * FLIGHT_CONFIG.turnRate * deltaTime;
     this.position = moveLngLat(this.position, this.heading, this.speed * deltaTime);
     this.distance += this.speed * deltaTime;
     this.#setScore(Math.round(this.distance));
+    this.#checkGroundCollision();
+  }
+
+  #checkGroundCollision() {
+    if (this.altitude > FLIGHT_CONFIG.groundCollisionAltitude) return;
+
+    this.altitude = 0;
+    this.verticalSpeed = 0;
+    this.#paintHud();
+    this.stop();
+    this.#showOverlay({
+      title: CRASH_TITLE,
+      message: CRASH_MESSAGE,
+      buttonText: 'Volver a despegar',
+    });
   }
 
   #syncCamera(duration) {
