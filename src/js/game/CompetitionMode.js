@@ -39,7 +39,8 @@ export class CompetitionMode {
   update({ deltaTime, position, heading }) {
     if (!this.active) return { finished: false, crossed: false };
 
-    this.#ensureMapLayers();
+    const layersReady = this.#ensureMapLayers();
+    if (layersReady && this.nextRing) this.#paintRing();
     this.remainingSeconds = Math.max(0, this.remainingSeconds - deltaTime);
     if (this.remainingSeconds <= 0) {
       return { finished: true, crossed: false };
