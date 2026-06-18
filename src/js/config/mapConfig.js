@@ -39,13 +39,15 @@ export const PRESET_LOCATIONS = [
 
 export const MAP_CONFIG = {
   center: PRESET_LOCATIONS[0].center,
-  initialZoom: 15.8,
-  minZoom: 12,
+  initialZoom: 13.9,
+  minZoom: 10,
   maxZoom: 19,
   pitch: 72,
+  minFlightPitch: 56,
+  maxFlightPitch: 84,
   terrainExaggeration: 1.65,
   cameraAltitudeMeters: 52,
-  lookAheadMeters: 190,
+  lookAheadMeters: 1150,
   satelliteTiles: [
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   ],
@@ -54,11 +56,14 @@ export const MAP_CONFIG = {
 
 export const FLIGHT_CONFIG = {
   startHeading: PRESET_LOCATIONS[0].heading,
-  startSpeed: 42,
-  minSpeed: 20,
-  maxSpeed: 165,
-  acceleration: 38,
-  drag: 12,
-  turnRate: 58,
+  startSpeed: 360,
+  minSpeed: 120,
+  maxSpeed: 1850,
+  acceleration: 1180,
+  drag: 72,
+  turnRate: 42,
+  pitchInfluence: 16,
+  diveBoost: 340,
+  climbBrake: 115,
   storageBestScoreKey: 'plane2:best-distance',
 };
