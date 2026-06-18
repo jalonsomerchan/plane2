@@ -1,4 +1,3 @@
-import '../css/main.css';
 import { Game } from './game/Game.js';
 
 const game = new Game({
