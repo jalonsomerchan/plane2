@@ -212,7 +212,7 @@ export class Game {
   }
 
   #updateFlight(deltaTime) {
-    const altitudeInput = this.controls.pitch;
+    const altitudeInput = -this.controls.pitch;
     const targetVerticalSpeed =
       altitudeInput >= 0
         ? altitudeInput * FLIGHT_CONFIG.climbRate
