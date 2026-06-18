@@ -72,7 +72,8 @@ export class Game {
   reset() {
     this.position = [...this.startLocation.center];
     this.heading = this.startLocation.heading ?? FLIGHT_CONFIG.startHeading;
-    this.flightPitch = 0;
+    this.altitude = FLIGHT_CONFIG.startAltitude;
+    this.verticalSpeed = 0;
     this.speed = FLIGHT_CONFIG.startSpeed;
     this.distance = 0;
     this.#syncCamera(0);
@@ -92,7 +93,8 @@ export class Game {
     this.startLocation = location;
     this.position = [...location.center];
     this.heading = location.heading ?? FLIGHT_CONFIG.startHeading;
-    this.flightPitch = 0;
+    this.altitude = FLIGHT_CONFIG.startAltitude;
+    this.verticalSpeed = 0;
     this.#syncCamera(450);
   }
 
@@ -187,15 +189,25 @@ export class Game {
   }
 
   #updateFlight(deltaTime) {
-    const pitchInput = this.controls.pitch;
+    const altitudeInput = this.controls.pitch;
+    const targetVerticalSpeed =
+      altitudeInput >= 0
+        ? altitudeInput * FLIGHT_CONFIG.climbRate
+        : altitudeInput * FLIGHT_CONFIG.sinkRate;
+    const smoothing = Math.min(1, FLIGHT_CONFIG.altitudeSmoothing * deltaTime);
     const throttleForce = this.controls.throttle * FLIGHT_CONFIG.acceleration;
-    const pitchSpeedEffect =
-      Math.max(0, -pitchInput) * FLIGHT_CONFIG.diveBoost -
-      Math.max(0, pitchInput) * FLIGHT_CONFIG.climbBrake;
+    const altitudeSpeedEffect =
+      Math.max(0, -altitudeInput) * FLIGHT_CONFIG.diveBoost -
+      Math.max(0, altitudeInput) * FLIGHT_CONFIG.climbBrake;
 
-    this.flightPitch = clamp(pitchInput * FLIGHT_CONFIG.pitchInfluence, -FLIGHT_CONFIG.pitchInfluence, FLIGHT_CONFIG.pitchInfluence);
+    this.verticalSpeed += (targetVerticalSpeed - this.verticalSpeed) * smoothing;
+    this.altitude = clamp(
+      this.altitude + this.verticalSpeed * deltaTime,
+      FLIGHT_CONFIG.minAltitude,
+      FLIGHT_CONFIG.maxAltitude,
+    );
     this.speed = clamp(
-      this.speed + (throttleForce + pitchSpeedEffect - FLIGHT_CONFIG.drag) * deltaTime,
+      this.speed + (throttleForce + altitudeSpeedEffect - FLIGHT_CONFIG.drag) * deltaTime,
       FLIGHT_CONFIG.minSpeed,
       FLIGHT_CONFIG.maxSpeed,
     );
@@ -208,23 +220,25 @@ export class Game {
   #syncCamera(duration) {
     if (!this.map) return;
 
-    const pitch = clamp(
-      MAP_CONFIG.pitch + this.flightPitch,
-      MAP_CONFIG.minFlightPitch,
-      MAP_CONFIG.maxFlightPitch,
+    const altitudeRatio = clamp(this.altitude / MAP_CONFIG.altitudeZoomReferenceMeters, 0.32, 8.8);
+    const zoom = clamp(
+      MAP_CONFIG.initialZoom - Math.log2(altitudeRatio),
+      MAP_CONFIG.minFlightZoom,
+      MAP_CONFIG.maxFlightZoom,
     );
-    const lookAhead = MAP_CONFIG.lookAheadMeters + this.speed * 1.65;
+    const lookAhead =
+      MAP_CONFIG.lookAheadMeters + this.speed * 1.65 + this.altitude * MAP_CONFIG.altitudeLookAheadFactor;
     const center = moveLngLat(this.position, this.heading, lookAhead);
     const camera = {
       center,
       bearing: this.heading,
-      pitch,
-      zoom: MAP_CONFIG.initialZoom,
+      pitch: MAP_CONFIG.pitch,
+      zoom,
       duration,
       essential: true,
     };
 
-    if (this.#terrainReady && this.map.setFreeCameraOptions) {
+    if (this.#terrainReady) {
       this.map.easeTo(camera);
       return;
     }
@@ -233,7 +247,7 @@ export class Game {
   }
 
   #paintHud() {
-    this.speedElement.textContent = `${Math.round(this.speed * 3.6)} km/h`;
+    this.speedElement.textContent = `${Math.round(this.speed * 3.6)} km/h · ${Math.round(this.altitude)} m`;
   }
 
   #bindEvents() {
