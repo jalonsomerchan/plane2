@@ -37,6 +37,49 @@ export const PRESET_LOCATIONS = [
   },
 ];
 
+export const GAME_MODES = {
+  tourism: {
+    id: 'tourism',
+    name: 'Modo turismo',
+    description: 'Modo turismo: vuela sin límite y explora el relieve 3D.',
+  },
+  competition: {
+    id: 'competition',
+    name: 'Modo competición',
+    description: 'Competición: atraviesa tantos aros como puedas antes de que acaben los 60 segundos.',
+  },
+};
+
+export const COMPETITION_LEVELS = {
+  easy: {
+    id: 'easy',
+    name: 'Nivel 1 · entrenamiento',
+    durationSeconds: 60,
+    ringRadiusMeters: 420,
+    ringDistanceMeters: 2100,
+    headingSpreadDegrees: 24,
+    pointsPerRing: 100,
+  },
+  medium: {
+    id: 'medium',
+    name: 'Nivel 2 · piloto',
+    durationSeconds: 60,
+    ringRadiusMeters: 310,
+    ringDistanceMeters: 2850,
+    headingSpreadDegrees: 38,
+    pointsPerRing: 150,
+  },
+  hard: {
+    id: 'hard',
+    name: 'Nivel 3 · as',
+    durationSeconds: 60,
+    ringRadiusMeters: 225,
+    ringDistanceMeters: 3600,
+    headingSpreadDegrees: 54,
+    pointsPerRing: 220,
+  },
+};
+
 export const MAP_CONFIG = {
   center: PRESET_LOCATIONS[0].center,
   initialZoom: 13.9,

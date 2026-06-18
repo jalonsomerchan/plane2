@@ -14,6 +14,13 @@ const game = new Game({
   locationSearchInput: document.querySelector('#location-search-input'),
   locationResults: document.querySelector('#location-results'),
   locationStatus: document.querySelector('#location-status'),
+  gameModeSelect: document.querySelector('#game-mode-select'),
+  competitionLevelSelect: document.querySelector('#competition-level-select'),
+  modeStatus: document.querySelector('#mode-status'),
+  modeReadout: document.querySelector('#mode-readout'),
+  competitionHud: document.querySelector('#competition-hud'),
+  competitionScore: document.querySelector('#competition-score'),
+  competitionTime: document.querySelector('#competition-time'),
 });
 
 window.game = game;
