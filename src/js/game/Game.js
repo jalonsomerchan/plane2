@@ -1,5 +1,5 @@
 import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm';
-import { FLIGHT_CONFIG, GAME_MODES, MAP_CONFIG, PRESET_LOCATIONS } from '../config/mapConfig.js';
+import { COMPETITION_LEVELS, FLIGHT_CONFIG, GAME_MODES, MAP_CONFIG, PRESET_LOCATIONS } from '../config/mapConfig.js';
 import { MobileFlightControls } from '../controls/MobileFlightControls.js';
 import { clamp } from '../utils/math.js';
 import { readNumber, writeNumber } from '../utils/storage.js';
@@ -375,8 +375,8 @@ export class Game {
 
   #syncModeHud() {
     const isCompetition = this.#isCompetition();
-    const levelName = this.competition.hud.levelName ?? '';
-    this.modeReadout.textContent = isCompetition ? `Modo competición · ${levelName}` : 'Modo turismo';
+    const level = COMPETITION_LEVELS[this.modePicker.selection.level] ?? COMPETITION_LEVELS.easy;
+    this.modeReadout.textContent = isCompetition ? `Modo competición · ${level.name}` : 'Modo turismo';
     this.competitionHud.classList.toggle('hidden', !isCompetition);
     this.competitionHud.classList.remove('ring-flash');
 
