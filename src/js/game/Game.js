@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm';
 import { MAP_CONFIG, FLIGHT_CONFIG } from '../config/mapConfig.js';
 import { MobileFlightControls } from '../controls/MobileFlightControls.js';
 import { moveLngLat } from './geo.js';
