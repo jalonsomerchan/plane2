@@ -14,6 +14,7 @@ export class LocationPicker {
     this.statusElement = statusElement;
     this.onSelect = onSelect;
     this.currentLocation = PRESET_LOCATIONS[0];
+    this.searchResults = [];
 
     this.#paintPresetOptions();
     this.#bindEvents();
@@ -68,14 +69,25 @@ export class LocationPicker {
       if (!response.ok) throw new Error('Search failed');
 
       const places = await response.json();
-      this.#paintResults(places);
+      this.#paintResults(this.#normalizePlaces(places));
     } catch (error) {
       if (error.name === 'AbortError') return;
       this.#setStatus('No he podido buscar ahora. Prueba otra localización o usa una predefinida.');
     }
   }
 
+  #normalizePlaces(places) {
+    return places
+      .map((place) => ({
+        name: place.display_name ?? 'Localización sin nombre',
+        center: [Number(place.lon), Number(place.lat)],
+      }))
+      .filter((place) => place.center.every(Number.isFinite));
+  }
+
   #paintResults(places) {
+    this.searchResults = places;
+
     if (!places.length) {
       this.#setStatus('No he encontrado resultados. Prueba con otro nombre.');
       return;
@@ -92,34 +104,34 @@ export class LocationPicker {
   }
 
   #resultTemplate(place, index) {
-    const name = this.#escapeText(place.display_name ?? 'Localización sin nombre');
-    const lat = Number(place.lat);
-    const lon = Number(place.lon);
+    const name = this.#escapeText(place.name);
 
     return `
-      <button class="location-result" type="button" data-index="${index}" data-lat="${lat}" data-lon="${lon}" data-name="${name}">
+      <button class="location-result" type="button" data-index="${index}">
         <span>${name}</span>
       </button>
     `;
   }
 
   #selectSearchResult(button) {
-    const name = button.dataset.name;
-    const center = [Number(button.dataset.lon), Number(button.dataset.lat)];
+    const place = this.searchResults[Number(button.dataset.index)];
+    if (!place) return;
+
     const location = {
       id: `search-${Date.now()}`,
-      name,
-      center,
+      name: place.name,
+      center: place.center,
       heading: 28,
     };
 
     this.currentLocation = location;
     this.selectElement.value = PRESET_LOCATIONS[0].id;
-    this.#setStatus(`Salida preparada en ${name}.`);
+    this.#setStatus(`Salida preparada en ${place.name}.`);
     this.onSelect(location);
   }
 
   #clearResults() {
+    this.searchResults = [];
     this.resultsElement.innerHTML = '';
   }
 
