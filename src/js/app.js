@@ -9,6 +9,11 @@ const game = new Game({
   steeringElement: document.querySelector('#steering-control'),
   throttleElement: document.querySelector('#throttle-control'),
   speedElement: document.querySelector('#speed-readout'),
+  locationSelect: document.querySelector('#location-select'),
+  locationSearchForm: document.querySelector('#location-search-form'),
+  locationSearchInput: document.querySelector('#location-search-input'),
+  locationResults: document.querySelector('#location-results'),
+  locationStatus: document.querySelector('#location-status'),
 });
 
 window.game = game;
