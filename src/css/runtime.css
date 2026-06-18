@@ -212,7 +212,7 @@ select,
   box-shadow:
     0 0.9rem 1.9rem rgba(2, 6, 23, 0.62),
     inset 0 0.55rem 0.9rem rgba(255, 255, 255, 0.14);
-  transform: translate(calc(-50% + var(--stick-x)), calc(-50% + var(--stick-y))) rotate(calc(var(--stick-x) * 0.12));
+  transform: translate(calc(-50% + var(--stick-x)), calc(-50% + var(--stick-y)));
   transition: transform 90ms ease;
 }
 
