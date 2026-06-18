@@ -1,4 +1,3 @@
-import 'maplibre-gl/dist/maplibre-gl.css';
 import '../css/main.css';
 import { Game } from './game/Game.js';
 
