@@ -115,6 +115,7 @@ export class Game {
     this.position = [...this.startLocation.center];
     this.heading = this.startLocation.heading ?? FLIGHT_CONFIG.startHeading;
     this.altitude = FLIGHT_CONFIG.startAltitude;
+    this.pitchAngle = 0;
     this.verticalSpeed = 0;
     this.speed = FLIGHT_CONFIG.startSpeed;
     this.steeringInput = 0;
@@ -146,6 +147,7 @@ export class Game {
     this.position = [...location.center];
     this.heading = location.heading ?? FLIGHT_CONFIG.startHeading;
     this.altitude = FLIGHT_CONFIG.startAltitude;
+    this.pitchAngle = 0;
     this.verticalSpeed = 0;
     this.speed = FLIGHT_CONFIG.startSpeed;
     this.steeringInput = 0;
@@ -248,20 +250,23 @@ export class Game {
   }
 
   #updateFlight(deltaTime) {
-    const altitudeInput = -this.controls.pitch;
-    const targetVerticalSpeed =
-      altitudeInput >= 0
-        ? altitudeInput * FLIGHT_CONFIG.climbRate
-        : altitudeInput * FLIGHT_CONFIG.sinkRate;
-    const altitudeSmoothing = Math.min(1, FLIGHT_CONFIG.altitudeSmoothing * deltaTime);
     const rawSteering = this.controls.steering;
     const targetSteering = Math.sign(rawSteering) * Math.abs(rawSteering) ** FLIGHT_CONFIG.steeringCurve;
     const steeringSmoothing = Math.min(1, FLIGHT_CONFIG.steeringSmoothing * deltaTime);
     const throttle = this.controls.throttle;
     const throttleCurve = throttle ** FLIGHT_CONFIG.throttleCurve;
+    const pitchInput = -this.controls.pitch;
+    const targetPitch = pitchInput * FLIGHT_CONFIG.maxPitchAngle;
+    const pitchSmoothing = Math.min(1, FLIGHT_CONFIG.pitchSmoothing * deltaTime);
+
+    this.pitchAngle += (targetPitch - this.pitchAngle) * pitchSmoothing;
+    this.steeringInput += (targetSteering - this.steeringInput) * steeringSmoothing;
+
+    const pitchRatio = this.pitchAngle / FLIGHT_CONFIG.maxPitchAngle;
+    const speedRatio = clamp(this.speed / FLIGHT_CONFIG.cruiseSpeed, 0, FLIGHT_CONFIG.maxLiftSpeedRatio);
     const altitudeSpeedEffect =
-      Math.max(0, -altitudeInput) * FLIGHT_CONFIG.diveBoost -
-      Math.max(0, altitudeInput) * FLIGHT_CONFIG.climbBrake;
+      Math.max(0, -pitchRatio) * FLIGHT_CONFIG.diveBoost -
+      Math.max(0, pitchRatio) * FLIGHT_CONFIG.climbBrake;
     const targetSpeed = clamp(
       FLIGHT_CONFIG.minSpeed + throttleCurve * (FLIGHT_CONFIG.maxSpeed - FLIGHT_CONFIG.minSpeed) + altitudeSpeedEffect,
       FLIGHT_CONFIG.minSpeed,
@@ -270,19 +275,39 @@ export class Game {
     const speedResponse =
       targetSpeed > this.speed ? FLIGHT_CONFIG.accelerationResponse : FLIGHT_CONFIG.decelerationResponse;
 
-    this.verticalSpeed += (targetVerticalSpeed - this.verticalSpeed) * altitudeSmoothing;
-    this.altitude = clamp(
-      this.altitude + this.verticalSpeed * deltaTime,
-      FLIGHT_CONFIG.minAltitude,
-      FLIGHT_CONFIG.maxAltitude,
-    );
     this.speed += (targetSpeed - this.speed) * Math.min(1, speedResponse * deltaTime);
-    this.steeringInput += (targetSteering - this.steeringInput) * steeringSmoothing;
+    this.#updateAltitude(deltaTime, pitchRatio, speedRatio);
     this.heading += this.steeringInput * FLIGHT_CONFIG.turnRate * deltaTime;
     this.position = moveLngLat(this.position, this.heading, this.speed * deltaTime);
     this.distance += this.speed * deltaTime;
     this.#setScore(Math.round(this.distance));
     this.#checkGroundCollision();
+  }
+
+  #updateAltitude(deltaTime, pitchRatio, speedRatio) {
+    const noseLift = pitchRatio * FLIGHT_CONFIG.pitchLiftRate * clamp(speedRatio, 0.22, 1.35);
+    const airspeedLift = (speedRatio - FLIGHT_CONFIG.levelFlightSpeedRatio) * FLIGHT_CONFIG.airspeedLiftRate;
+    const lowSpeedSink =
+      speedRatio < FLIGHT_CONFIG.stallSpeedRatio
+        ? (FLIGHT_CONFIG.stallSpeedRatio - speedRatio) * FLIGHT_CONFIG.stallSinkRate
+        : 0;
+    const verticalAcceleration = noseLift + airspeedLift - lowSpeedSink;
+
+    this.verticalSpeed = clamp(
+      this.verticalSpeed + verticalAcceleration * deltaTime,
+      -FLIGHT_CONFIG.maxSinkSpeed,
+      FLIGHT_CONFIG.maxClimbSpeed,
+    );
+    this.verticalSpeed *= Math.max(0, 1 - FLIGHT_CONFIG.verticalDrag * deltaTime);
+    this.altitude = clamp(
+      this.altitude + this.verticalSpeed * deltaTime,
+      FLIGHT_CONFIG.minAltitude,
+      FLIGHT_CONFIG.maxAltitude,
+    );
+
+    if (this.altitude <= FLIGHT_CONFIG.minAltitude && this.verticalSpeed < 0) {
+      this.verticalSpeed = 0;
+    }
   }
 
   #updateGameMode(deltaTime) {
@@ -361,7 +386,10 @@ export class Game {
   }
 
   #paintHud() {
-    this.speedElement.textContent = `${Math.round(this.speed * 3.6)} km/h · ${Math.round(this.altitude)} m`;
+    const altitude = Math.round(this.altitude);
+    const climb = Math.round(this.verticalSpeed);
+    const climbLabel = climb > 0 ? `+${climb}` : String(climb);
+    this.speedElement.textContent = `${Math.round(this.speed * 3.6)} km/h · ${altitude} m · ${climbLabel} m/s`;
     this.#paintCompetitionHud();
   }
 
