@@ -1,15 +1,17 @@
 import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/+esm';
-import { FLIGHT_CONFIG, MAP_CONFIG, PRESET_LOCATIONS } from '../config/mapConfig.js';
+import { FLIGHT_CONFIG, GAME_MODES, MAP_CONFIG, PRESET_LOCATIONS } from '../config/mapConfig.js';
 import { MobileFlightControls } from '../controls/MobileFlightControls.js';
 import { clamp } from '../utils/math.js';
 import { readNumber, writeNumber } from '../utils/storage.js';
+import { CompetitionMode } from './CompetitionMode.js';
 import { moveLngLat } from './geo.js';
+import { GameModePicker } from './GameModePicker.js';
 import { LocationPicker } from './LocationPicker.js';
 
 const OVERLAY_HIDDEN_CLASS = 'is-hidden';
-const START_TITLE = 'Elige salida y despega';
+const START_TITLE = 'Elige modo, salida y despega';
 const START_MESSAGE =
-  'Usa el mando para girar y cambiar altitud: tira para subir, empuja para bajar. La palanca controla una velocidad extrema. Antes de despegar, selecciona una localización con relieve 3D.';
+  'Turismo es vuelo libre. En Competición tienes 60 segundos para atravesar los aros que van apareciendo. Elige nivel, salida y despega.';
 const CRASH_TITLE = 'Has tocado suelo';
 const CRASH_MESSAGE =
   'Impacto contra el terreno. Sube antes con el mando o mete más potencia para volver a despegar. Puedes cambiar la salida antes de reintentarlo.';
@@ -34,6 +36,13 @@ export class Game {
     locationSearchInput,
     locationResults,
     locationStatus,
+    gameModeSelect,
+    competitionLevelSelect,
+    modeStatus,
+    modeReadout,
+    competitionHud,
+    competitionScore,
+    competitionTime,
   }) {
     this.scoreElement = scoreElement;
     this.bestScoreElement = bestScoreElement;
@@ -42,10 +51,21 @@ export class Game {
     this.overlayMessage = overlayElement.querySelector('#overlay-message');
     this.playButton = playButton;
     this.speedElement = speedElement;
+    this.modeReadout = modeReadout;
+    this.competitionHud = competitionHud;
+    this.competitionScore = competitionScore;
+    this.competitionTime = competitionTime;
     this.startLocation = PRESET_LOCATIONS[0];
     this.controls = new MobileFlightControls({ steeringElement, throttleElement });
     this.bestScore = readNumber(FLIGHT_CONFIG.storageBestScoreKey);
     this.map = this.#createMap(mapElement);
+    this.competition = new CompetitionMode({ map: this.map });
+    this.modePicker = new GameModePicker({
+      modeSelect: gameModeSelect,
+      levelSelect: competitionLevelSelect,
+      statusElement: modeStatus,
+      onChange: () => this.#syncModeHud(),
+    });
     this.locationPicker = new LocationPicker({
       selectElement: locationSelect,
       formElement: locationSearchForm,
@@ -59,6 +79,7 @@ export class Game {
     this.#bindEvents();
     this.#setBestScore(this.bestScore);
     this.#setScore(0);
+    this.#syncModeHud();
   }
 
   start() {
@@ -66,6 +87,18 @@ export class Game {
     this.#hideOverlay();
     this.#isRunning = true;
     this.#lastTime = performance.now();
+
+    if (this.#isCompetition()) {
+      this.competition.start({
+        levelId: this.modePicker.selection.level,
+        position: this.position,
+        heading: this.heading,
+      });
+    } else {
+      this.competition.stop();
+    }
+
+    this.#syncModeHud();
     this.#animationFrame = requestAnimationFrame((time) => this.#tick(time));
   }
 
@@ -205,6 +238,9 @@ export class Game {
     this.#updateFlight(deltaTime);
     if (!this.#isRunning) return;
 
+    this.#updateGameMode(deltaTime);
+    if (!this.#isRunning) return;
+
     this.#syncCamera(90);
     this.#paintHud();
 
@@ -249,6 +285,25 @@ export class Game {
     this.#checkGroundCollision();
   }
 
+  #updateGameMode(deltaTime) {
+    if (!this.#isCompetition()) return;
+
+    const state = this.competition.update({
+      deltaTime,
+      position: this.position,
+      heading: this.heading,
+    });
+
+    if (state.crossed) this.competitionHud.classList.add('ring-flash');
+
+    if (state.finished) {
+      this.#finishCompetition();
+      return;
+    }
+
+    this.#paintCompetitionHud();
+  }
+
   #checkGroundCollision() {
     if (this.altitude > FLIGHT_CONFIG.groundCollisionAltitude) return;
 
@@ -256,10 +311,23 @@ export class Game {
     this.verticalSpeed = 0;
     this.#paintHud();
     this.stop();
+    this.competition.stop();
     this.#showOverlay({
       title: CRASH_TITLE,
       message: CRASH_MESSAGE,
       buttonText: 'Volver a despegar',
+    });
+  }
+
+  #finishCompetition() {
+    const { score, levelName } = this.competition.hud;
+    this.stop();
+    this.competition.stop();
+    this.#paintCompetitionHud();
+    this.#showOverlay({
+      title: 'Tiempo agotado',
+      message: `${levelName} completado. Has conseguido ${score} puntos atravesando aros en 60 segundos. Cambia nivel o vuelve a despegar para mejorar.`,
+      buttonText: 'Reintentar',
     });
   }
 
@@ -294,11 +362,38 @@ export class Game {
 
   #paintHud() {
     this.speedElement.textContent = `${Math.round(this.speed * 3.6)} km/h · ${Math.round(this.altitude)} m`;
+    this.#paintCompetitionHud();
+  }
+
+  #paintCompetitionHud() {
+    if (!this.#isCompetition()) return;
+
+    const { score, remainingSeconds } = this.competition.hud;
+    this.competitionScore.textContent = String(score);
+    this.competitionTime.textContent = String(remainingSeconds);
+  }
+
+  #syncModeHud() {
+    const isCompetition = this.#isCompetition();
+    const levelName = this.competition.hud.levelName ?? '';
+    this.modeReadout.textContent = isCompetition ? `Modo competición · ${levelName}` : 'Modo turismo';
+    this.competitionHud.classList.toggle('hidden', !isCompetition);
+    this.competitionHud.classList.remove('ring-flash');
+
+    if (!isCompetition) this.competition.stop();
+    if (isCompetition) this.#paintCompetitionHud();
   }
 
   #bindEvents() {
     this.playButton.addEventListener('click', () => this.start());
+    this.competitionHud.addEventListener('animationend', () => {
+      this.competitionHud.classList.remove('ring-flash');
+    });
     window.addEventListener('blur', () => this.stop());
+  }
+
+  #isCompetition() {
+    return this.modePicker.selection.mode === GAME_MODES.competition.id;
   }
 
   #setScore(score) {
